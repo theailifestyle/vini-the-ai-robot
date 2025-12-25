@@ -1,0 +1,8 @@
+{
+  "name": "Vinny - The AI Robot",
+  "description": "An interactive full-screen robot companion powered by Gemini. Vinny can talk, express emotions, and even eat or drink virtually.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
