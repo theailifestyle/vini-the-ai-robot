@@ -45,7 +45,7 @@ const drinkTool: FunctionDeclaration = {
 
 const lookTool: FunctionDeclaration = {
   name: 'look',
-  description: 'Call this when the user asks Vini to see, look at, read, or analyze something using the camera.',
+  description: 'Call this when the user asks Vini to see, look at, read, or analyze something using the camera. IMPORTANT: After calling this tool, wait a moment before describing what you see. The image will appear in your visual context shortly after the tool completes.',
 };
 
 // ============================================================================

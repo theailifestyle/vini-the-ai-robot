@@ -71,6 +71,8 @@ const DEFAULT_CONFIG: ViniConfig = {
   persona: 'Vini'
 };
 
+const DEBUG_MODE = false;
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -84,6 +86,10 @@ const App: React.FC = () => {
   const [viniState, setViniState] = useState<ViniState>(ViniState.IDLE);
   const [emotion, setEmotion] = useState<Emotion>(Emotion.NEUTRAL);
   const [consumable, setConsumable] = useState<FoodItem | null>(null);
+
+  // Debug State
+  const [debugImage, setDebugImage] = useState<string | null>(null);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   // Visualizer State
   const [speakingIntensity, setSpeakingIntensity] = useState(0);
@@ -146,6 +152,7 @@ const App: React.FC = () => {
           // ------------------------------------------------------------------
           if (name === 'look') {
             setViniState(ViniState.LOOKING);
+            if (DEBUG_MODE) setDebugLog(prev => [...prev, 'Look tool triggered', 'Opening camera...']);
             try {
               // Open camera - FORCE FRONT FACING CAMERA ('user')
               const stream = await navigator.mediaDevices.getUserMedia({
@@ -156,6 +163,7 @@ const App: React.FC = () => {
                 videoRef.current.srcObject = stream;
                 await videoRef.current.play();
 
+                if (DEBUG_MODE) setDebugLog(prev => [...prev, 'Camera active, waiting for focus...']);
                 // Wait for animation and auto-focus (800ms)
                 await new Promise(r => setTimeout(r, 800));
 
@@ -172,7 +180,23 @@ const App: React.FC = () => {
 
                 // Convert to Base64 and send
                 const base64 = canvasRef.current.toDataURL('image/jpeg', 0.8).split(',')[1];
-                liveClientRef.current?.sendImage(base64);
+
+                if (DEBUG_MODE) {
+                  setDebugImage(`data:image/jpeg;base64,${base64}`);
+                  setDebugLog(prev => [...prev, 'Image captured', 'Uploading to Gemini...']);
+                }
+
+                // >>> FIX START: Await the upload to ensure the model has the image BEFORE returning <<<
+                if (liveClientRef.current) {
+                  await liveClientRef.current.sendImage(base64);
+                }
+
+                if (DEBUG_MODE) setDebugLog(prev => [...prev, 'Upload complete', 'Waiting 4s for model to ingest...']);
+
+                // >>> FIX START: Add delay to prevent race condition (model reading old frame) <<<
+                await new Promise(r => setTimeout(r, 4000));
+
+                if (DEBUG_MODE) setDebugLog(prev => [...prev, 'Done.']);
 
                 // Clean up tracks immediately after use
                 stream.getTracks().forEach(t => t.stop());
@@ -183,7 +207,10 @@ const App: React.FC = () => {
               // Fallback or error indication?
             }
             setViniState(ViniState.THINKING); // Processing
-            return { status: 'image_sent' };
+            return {
+              status: 'success',
+              instruction: 'An image from the camera is now in your visual context. Describe what you CURRENTLY see in your vision. Do NOT describe anything you saw before - only describe the image that is now visible to you.'
+            };
           }
 
           // Handle Food Tools
@@ -346,6 +373,22 @@ const App: React.FC = () => {
       {/* Hidden elements for camera capture */}
       <video ref={videoRef} className="hidden" playsInline muted />
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* DEBUG OVERLAY */}
+      {DEBUG_MODE && (
+        <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 pointer-events-none">
+          {debugImage && (
+            <div className="border-2 border-red-500 rounded bg-black p-1">
+              <img src={debugImage} alt="Debug Capture" className="w-32 h-auto rounded" />
+            </div>
+          )}
+          <div className="bg-black/80 text-green-400 font-mono text-xs p-2 rounded max-w-[200px]">
+            {debugLog.slice(-5).map((log, i) => (
+              <div key={i}>&gt; {log}</div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
