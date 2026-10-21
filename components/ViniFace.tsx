@@ -2,7 +2,7 @@
  * VinnyFace Component
  * 
  * The main visualizer for the AI.
- * Handles rendering the different "Persona" faces (Vini, WALLE, EVE, KITT, HAL).
+ * Handles rendering the different "Persona" faces (Vini, WALLE, EVE, KITT, HAL, Verity).
  * Uses Framer Motion for animations.
  * 
  * @module ViniFace
@@ -10,7 +10,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViniState, Emotion, FoodItem } from '../types';
+import { ViniState, Emotion, FoodItem, PersonaId } from '../types';
 
 interface ViniFaceProps {
   state: ViniState;
@@ -18,7 +18,7 @@ interface ViniFaceProps {
   speakingIntensity?: number;
   consumable?: FoodItem | null;
   color: string;
-  persona: 'Vini' | 'WALLE' | 'EVE' | 'KITT' | 'HAL';
+  persona: PersonaId;
 }
 
 interface EyeProps {
@@ -476,6 +476,116 @@ const EveEye: React.FC<EyeProps> = ({ side, state, emotion, color, speakingInten
 
 
 // ----------------------------------------------------------------------
+// VERITY: flat lemon-yellow smiley ball
+// ----------------------------------------------------------------------
+type VerityExpression = 'grin' | 'slight' | 'poker' | 'sad';
+
+const VERITY_MOUTHS: Record<VerityExpression, string> = {
+  slight: 'M 64 130 Q 100 150 136 130',
+  grin: 'M 46 116 Q 100 176 154 116',
+  poker: 'M 66 140 Q 100 140 134 140',
+  sad: 'M 56 160 Q 100 108 144 160',
+};
+
+const VerityFace: React.FC<{
+  state: ViniState;
+  emotion: Emotion;
+  speakingIntensity: number;
+  consumable?: FoodItem | null;
+  color: string;
+}> = ({ state, emotion, speakingIntensity, consumable, color }) => {
+  const [blink, setBlink] = useState(false);
+  const [cycle, setCycle] = useState(0);
+  const isSpeaking = state === ViniState.SPEAKING;
+  const isResting = state === ViniState.IDLE || state === ViniState.LISTENING;
+
+  useEffect(() => {
+    if (state === ViniState.EATING || state === ViniState.LOOKING) return;
+    const blinkInterval = setInterval(() => {
+      if (Math.random() > 0.65) {
+        setBlink(true);
+        setTimeout(() => setBlink(false), 140);
+      }
+    }, 2800);
+    return () => clearInterval(blinkInterval);
+  }, [state]);
+
+  // At rest and while listening, stroll through grin, poker face, sad, and slight smile.
+  useEffect(() => {
+    if (!isResting || emotion !== Emotion.NEUTRAL) return;
+    const interval = setInterval(() => setCycle((n) => n + 1), 2800);
+    return () => clearInterval(interval);
+  }, [isResting, emotion]);
+
+  const expression: VerityExpression = (() => {
+    if (state === ViniState.THINKING) return 'poker';
+    if (isSpeaking || state === ViniState.EATING || emotion === Emotion.HAPPY) return 'grin';
+    if (emotion === Emotion.CONFUSED) return 'sad';
+    if (state === ViniState.LOOKING) return 'slight';
+    return (['slight', 'grin', 'poker', 'sad'] as const)[cycle % 4];
+  })();
+
+  const mouth = isSpeaking
+    ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
+    : VERITY_MOUTHS[expression];
+  const eyeRy = blink ? 2.5 : expression === 'sad' ? 20 : 17;
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center">
+      <motion.div
+        animate={{
+          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : 1,
+          y: isSpeaking ? [0, -10, 0] : 0,
+        }}
+        transition={
+          isSpeaking
+            ? { duration: 0.28, repeat: Infinity, repeatType: 'mirror' }
+            : { type: 'spring', stiffness: 120, damping: 16 }
+        }
+        className="w-64 h-64 md:w-96 md:h-96"
+      >
+        <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label="Verity">
+          <circle cx="100" cy="100" r="90" fill={color} />
+          <motion.ellipse
+            cx="70"
+            cy="84"
+            rx="14"
+            ry={eyeRy}
+            fill="#111111"
+            animate={{ ry: eyeRy }}
+            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+          />
+          <motion.ellipse
+            cx="130"
+            cy="84"
+            rx="14"
+            ry={eyeRy}
+            fill="#111111"
+            animate={{ ry: eyeRy }}
+            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+          />
+          <motion.path
+            d={mouth}
+            fill="none"
+            stroke="#111111"
+            strokeWidth="9"
+            strokeLinecap="round"
+            animate={{ d: mouth }}
+            transition={{ type: 'spring', stiffness: 180, damping: 18 }}
+          />
+        </svg>
+      </motion.div>
+
+      {state === ViniState.EATING && consumable && (
+        <div className="absolute bottom-10 animate-float-up text-9xl z-50 drop-shadow-2xl">
+          {consumable.emoji}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------
 // MAIN CONTAINER
 // ----------------------------------------------------------------------
 const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity = 0, consumable, color, persona }) => {
@@ -487,7 +597,7 @@ const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity =
 
   // Random blink logic
   useEffect(() => {
-    if (isSleeping || persona === 'KITT' || persona === 'HAL') return;
+    if (isSleeping || persona === 'KITT' || persona === 'HAL' || persona === 'Verity') return;
 
     const blinkInterval = setInterval(() => {
       // Random blink every few seconds
@@ -512,6 +622,17 @@ const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity =
   }
   if (persona === 'KITT') {
     return <KittInterface state={state} speakingIntensity={speakingIntensity} consumable={consumable} />;
+  }
+  if (persona === 'Verity') {
+    return (
+      <VerityFace
+        state={state}
+        emotion={emotion}
+        speakingIntensity={speakingIntensity}
+        consumable={consumable}
+        color={color}
+      />
+    );
   }
 
   // Standard Two-Eye Interface
