@@ -527,7 +527,7 @@ const VerityFace: React.FC<{
   })();
 
   const mouth = isAsleep
-    ? 'M 86 142 Q 100 152 114 142'
+    ? 'M 90 144 Q 100 152 110 144'
     : isSpeaking
       ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
       : VERITY_MOUTHS[expression];
@@ -572,8 +572,8 @@ const VerityFace: React.FC<{
             />
           </motion.g>
           <motion.g animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.45, ease: 'easeInOut' }}>
-            <path d="M 56 80 Q 70 98 84 80" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
-            <path d="M 116 80 Q 130 98 144 80" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+            <path d="M 48 82 Q 70 104 92 82" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+            <path d="M 108 82 Q 130 104 152 82" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
           </motion.g>
           <motion.path
             d={mouth}
@@ -598,26 +598,27 @@ const VerityFace: React.FC<{
             transition={{ duration: 0.45, ease: 'easeInOut' }}
             aria-hidden="true"
           >
-            <div className="relative h-64 w-64 text-[1.15rem] md:h-96 md:w-96 md:text-[1.7rem]">
+            <div className="relative h-64 w-64 text-[1.65rem] md:h-96 md:w-96 md:text-[2.2rem]">
               {[0, 1, 2].map((i) => (
                 <motion.span
                   key={i}
                   className="absolute font-bold leading-none"
                   style={{
-                    left: `${62 + i * 10}%`,
-                    top: `${-6 - i * 5}%`,
+                    left: `${58 + i * 13}%`,
+                    top: `${-8 - i * 10}%`,
                     color,
-                    fontSize: `${0.95 + i * 0.32}em`,
+                    fontSize: `${1 + i * 0.28}em`,
                   }}
                   animate={{
-                    opacity: [0, 0.95, 0],
-                    y: [0, -16, -36],
+                    opacity: [0, 1, 1, 0],
+                    y: [8, 0, -10, -34],
                   }}
                   transition={{
-                    duration: 3.4,
+                    duration: 4.2,
                     repeat: Infinity,
-                    delay: i * 0.7,
+                    delay: i * 0.85,
                     ease: 'easeInOut',
+                    times: [0, 0.12, 0.72, 1],
                   }}
                 >
                   z
