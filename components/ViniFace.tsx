@@ -497,10 +497,11 @@ const VerityFace: React.FC<{
   const [blink, setBlink] = useState(false);
   const [cycle, setCycle] = useState(0);
   const isSpeaking = state === ViniState.SPEAKING;
-  const isResting = state === ViniState.IDLE || state === ViniState.LISTENING;
+  const isAsleep = state === ViniState.IDLE;
+  const isResting = state === ViniState.LISTENING;
 
   useEffect(() => {
-    if (state === ViniState.EATING || state === ViniState.LOOKING) return;
+    if (isAsleep || state === ViniState.EATING || state === ViniState.LOOKING) return;
     const blinkInterval = setInterval(() => {
       if (Math.random() > 0.65) {
         setBlink(true);
@@ -508,9 +509,9 @@ const VerityFace: React.FC<{
       }
     }, 2800);
     return () => clearInterval(blinkInterval);
-  }, [state]);
+  }, [state, isAsleep]);
 
-  // At rest and while listening, stroll through grin, poker face, sad, and slight smile.
+  // While listening, stroll through grin, poker face, sad, and slight smile.
   useEffect(() => {
     if (!isResting || emotion !== Emotion.NEUTRAL) return;
     const interval = setInterval(() => setCycle((n) => n + 1), 2800);
@@ -525,45 +526,55 @@ const VerityFace: React.FC<{
     return (['slight', 'grin', 'poker', 'sad'] as const)[cycle % 4];
   })();
 
-  const mouth = isSpeaking
-    ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
-    : VERITY_MOUTHS[expression];
+  const mouth = isAsleep
+    ? 'M 86 142 Q 100 152 114 142'
+    : isSpeaking
+      ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
+      : VERITY_MOUTHS[expression];
   const eyeRy = blink ? 2.5 : expression === 'sad' ? 20 : 17;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
       <motion.div
         animate={{
-          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : 1,
-          y: isSpeaking ? [0, -10, 0] : 0,
+          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : isAsleep ? [1, 1.02, 1] : 1,
+          y: isSpeaking ? [0, -10, 0] : isAsleep ? [0, 8, 0] : 0,
         }}
         transition={
           isSpeaking
             ? { duration: 0.28, repeat: Infinity, repeatType: 'mirror' }
-            : { type: 'spring', stiffness: 120, damping: 16 }
+            : isAsleep
+              ? { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }
+              : { type: 'spring', stiffness: 120, damping: 16 }
         }
         className="w-64 h-64 md:w-96 md:h-96"
       >
-        <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label="Verity">
+        <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label={isAsleep ? 'Verity sleeping' : 'Verity'}>
           <circle cx="100" cy="100" r="90" fill={color} />
-          <motion.ellipse
-            cx="70"
-            cy="84"
-            rx="14"
-            ry={eyeRy}
-            fill="#111111"
-            animate={{ ry: eyeRy }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          />
-          <motion.ellipse
-            cx="130"
-            cy="84"
-            rx="14"
-            ry={eyeRy}
-            fill="#111111"
-            animate={{ ry: eyeRy }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          />
+          <motion.g animate={{ opacity: isAsleep ? 0 : 1 }} transition={{ duration: 0.45, ease: 'easeInOut' }}>
+            <motion.ellipse
+              cx="70"
+              cy="84"
+              rx="14"
+              ry={eyeRy}
+              fill="#111111"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+            <motion.ellipse
+              cx="130"
+              cy="84"
+              rx="14"
+              ry={eyeRy}
+              fill="#111111"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+          </motion.g>
+          <motion.g animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.45, ease: 'easeInOut' }}>
+            <path d="M 56 80 Q 70 98 84 80" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+            <path d="M 116 80 Q 130 98 144 80" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+          </motion.g>
           <motion.path
             d={mouth}
             fill="none"
@@ -575,6 +586,47 @@ const VerityFace: React.FC<{
           />
         </svg>
       </motion.div>
+
+      <AnimatePresence>
+        {isAsleep && (
+          <motion.div
+            key="verity-zzz"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: 'easeInOut' }}
+            aria-hidden="true"
+          >
+            <div className="relative h-64 w-64 text-[1.15rem] md:h-96 md:w-96 md:text-[1.7rem]">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="absolute font-bold leading-none"
+                  style={{
+                    left: `${62 + i * 10}%`,
+                    top: `${-6 - i * 5}%`,
+                    color,
+                    fontSize: `${0.95 + i * 0.32}em`,
+                  }}
+                  animate={{
+                    opacity: [0, 0.95, 0],
+                    y: [0, -16, -36],
+                  }}
+                  transition={{
+                    duration: 3.4,
+                    repeat: Infinity,
+                    delay: i * 0.7,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  z
+                </motion.span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {state === ViniState.EATING && consumable && (
         <div className="absolute bottom-10 animate-float-up text-9xl z-50 drop-shadow-2xl">
