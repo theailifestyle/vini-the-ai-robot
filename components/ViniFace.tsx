@@ -497,10 +497,11 @@ const VerityFace: React.FC<{
   const [blink, setBlink] = useState(false);
   const [cycle, setCycle] = useState(0);
   const isSpeaking = state === ViniState.SPEAKING;
-  const isResting = state === ViniState.IDLE || state === ViniState.LISTENING;
+  const isAsleep = state === ViniState.IDLE;
+  const isResting = state === ViniState.LISTENING;
 
   useEffect(() => {
-    if (state === ViniState.EATING || state === ViniState.LOOKING) return;
+    if (isAsleep || state === ViniState.EATING || state === ViniState.LOOKING) return;
     const blinkInterval = setInterval(() => {
       if (Math.random() > 0.65) {
         setBlink(true);
@@ -508,9 +509,9 @@ const VerityFace: React.FC<{
       }
     }, 2800);
     return () => clearInterval(blinkInterval);
-  }, [state]);
+  }, [state, isAsleep]);
 
-  // At rest and while listening, stroll through grin, poker face, sad, and slight smile.
+  // While listening, stroll through grin, poker face, sad, and slight smile.
   useEffect(() => {
     if (!isResting || emotion !== Emotion.NEUTRAL) return;
     const interval = setInterval(() => setCycle((n) => n + 1), 2800);
@@ -525,45 +526,55 @@ const VerityFace: React.FC<{
     return (['slight', 'grin', 'poker', 'sad'] as const)[cycle % 4];
   })();
 
-  const mouth = isSpeaking
-    ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
-    : VERITY_MOUTHS[expression];
+  const mouth = isAsleep
+    ? 'M 90 144 Q 100 152 110 144'
+    : isSpeaking
+      ? `M 46 116 Q 100 ${168 + speakingIntensity * 14} 154 116`
+      : VERITY_MOUTHS[expression];
   const eyeRy = blink ? 2.5 : expression === 'sad' ? 20 : 17;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
       <motion.div
         animate={{
-          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : 1,
-          y: isSpeaking ? [0, -10, 0] : 0,
+          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : isAsleep ? [1, 1.035, 1] : 1,
+          y: isSpeaking ? [0, -10, 0] : isAsleep ? [0, 16, 0] : 0,
         }}
         transition={
           isSpeaking
             ? { duration: 0.28, repeat: Infinity, repeatType: 'mirror' }
-            : { type: 'spring', stiffness: 120, damping: 16 }
+            : isAsleep
+              ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+              : { type: 'spring', stiffness: 120, damping: 16 }
         }
         className="w-64 h-64 md:w-96 md:h-96"
       >
-        <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label="Verity">
+        <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label={isAsleep ? 'Verity sleeping' : 'Verity'}>
           <circle cx="100" cy="100" r="90" fill={color} />
-          <motion.ellipse
-            cx="70"
-            cy="84"
-            rx="14"
-            ry={eyeRy}
-            fill="#111111"
-            animate={{ ry: eyeRy }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          />
-          <motion.ellipse
-            cx="130"
-            cy="84"
-            rx="14"
-            ry={eyeRy}
-            fill="#111111"
-            animate={{ ry: eyeRy }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          />
+          <motion.g animate={{ opacity: isAsleep ? 0 : 1 }} transition={{ duration: 0.45, ease: 'easeInOut' }}>
+            <motion.ellipse
+              cx="70"
+              cy="84"
+              rx="14"
+              ry={eyeRy}
+              fill="#111111"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+            <motion.ellipse
+              cx="130"
+              cy="84"
+              rx="14"
+              ry={eyeRy}
+              fill="#111111"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+          </motion.g>
+          <motion.g animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.45, ease: 'easeInOut' }}>
+            <path d="M 48 82 Q 70 104 92 82" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+            <path d="M 108 82 Q 130 104 152 82" fill="none" stroke="#111111" strokeWidth="8" strokeLinecap="round" />
+          </motion.g>
           <motion.path
             d={mouth}
             fill="none"
@@ -575,6 +586,48 @@ const VerityFace: React.FC<{
           />
         </svg>
       </motion.div>
+
+      <AnimatePresence>
+        {isAsleep && (
+          <motion.div
+            key="verity-zzz"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: 'easeInOut' }}
+            aria-hidden="true"
+          >
+            <div className="relative h-64 w-64 text-[1.65rem] md:h-96 md:w-96 md:text-[2.2rem]">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="absolute font-bold leading-none"
+                  style={{
+                    left: `${58 + i * 13}%`,
+                    top: `${-8 - i * 10}%`,
+                    color,
+                    fontSize: `${1 + i * 0.28}em`,
+                  }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    y: [8, 0, -10, -34],
+                  }}
+                  transition={{
+                    duration: 4.2,
+                    repeat: Infinity,
+                    delay: i * 0.85,
+                    ease: 'easeInOut',
+                    times: [0, 0.12, 0.72, 1],
+                  }}
+                >
+                  z
+                </motion.span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {state === ViniState.EATING && consumable && (
         <div className="absolute bottom-10 animate-float-up text-9xl z-50 drop-shadow-2xl">
