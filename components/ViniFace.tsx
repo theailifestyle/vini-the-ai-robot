@@ -537,14 +537,14 @@ const VerityFace: React.FC<{
     <div className="relative w-full h-full flex flex-col items-center justify-center">
       <motion.div
         animate={{
-          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : isAsleep ? [1, 1.02, 1] : 1,
-          y: isSpeaking ? [0, -10, 0] : isAsleep ? [0, 8, 0] : 0,
+          scale: isSpeaking ? 1 + speakingIntensity * 0.045 : isAsleep ? [1, 1.035, 1] : 1,
+          y: isSpeaking ? [0, -10, 0] : isAsleep ? [0, 16, 0] : 0,
         }}
         transition={
           isSpeaking
             ? { duration: 0.28, repeat: Infinity, repeatType: 'mirror' }
             : isAsleep
-              ? { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }
+              ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
               : { type: 'spring', stiffness: 120, damping: 16 }
         }
         className="w-64 h-64 md:w-96 md:h-96"
