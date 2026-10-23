@@ -7,7 +7,7 @@
 
 *   **Real-time Interaction**: seamless voice-to-voice communication with low latency.
 *   **Visual Intelligence**: "Look" capability allows Vini to see and analyze your surroundings using the camera.
-*   **Interactive Personas**: Choose from different personalities like **Vini** (Helpful), **WALL-E** (Curious), **EVE** (Sleek), **KITT** (Sassy), **HAL** (Ominous), or **Verity** (Spooky-Silly).
+*   **Interactive Personas**: Choose from different personalities like **Vini** (Helpful), **WALL-E** (Curious), **EVE** (Sleek), **KITT** (Sassy), **HAL** (Ominous), **Verity** (Spooky-Silly), or **Bloopie** (Playful).
 *   **Interactive Expressions**: Animated facial expressions that react to Vini's state (Listening, Thinking, Speaking, Eating, etc.).
 *   **Simulated Actions**: Vini can "eat" and "drink" virtual items, showcasing the tool-use capabilities of the Gemini API.
 *   **Customizable**: Adjust "Silliness" and "Speed" levels to tweak Vini's energy and behavior.

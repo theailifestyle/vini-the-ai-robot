@@ -24,7 +24,7 @@ export interface FoodItem {
   name: string;
 }
 
-export type PersonaId = 'Vini' | 'WALLE' | 'EVE' | 'KITT' | 'HAL' | 'Verity';
+export type PersonaId = 'Vini' | 'WALLE' | 'EVE' | 'KITT' | 'HAL' | 'Verity' | 'Bloopie';
 
 export interface ViniConfig {
   eyeColor: string;
