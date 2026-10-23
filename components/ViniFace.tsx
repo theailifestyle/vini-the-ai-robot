@@ -718,7 +718,6 @@ const BloopieFace: React.FC<{
   const isSpeaking = state === ViniState.SPEAKING;
   const isAsleep = state === ViniState.IDLE;
   const isListening = state === ViniState.LISTENING;
-  const eyeRy = blink && !isAsleep ? 1.1 : 6.4;
   const pupilDy = state === ViniState.THINKING ? -2.4 : state === ViniState.LOOKING ? 0.4 : 0;
   const smile = emotion === Emotion.HAPPY || state === ViniState.EATING
     ? `M ${BLOOPIE_CX - 12} ${BLOOPIE_CY + 8} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 20} ${BLOOPIE_CX + 12} ${BLOOPIE_CY + 8}`
@@ -806,45 +805,34 @@ const BloopieFace: React.FC<{
           <ellipse cx={BLOOPIE_CX - 8} cy={BLOOPIE_CY - 14} rx="8" ry="4" fill="#FFFFFF" opacity="0.9" transform={`rotate(-28 ${BLOOPIE_CX - 8} ${BLOOPIE_CY - 14})`} />
 
           <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }} transition={{ duration: 0.4 }}>
-            <motion.ellipse
-              cx={BLOOPIE_CX - 10}
-              cy={BLOOPIE_CY - 2}
-              rx="6.4"
-              ry={eyeRy}
-              fill="#FFFFFF"
-              animate={{ ry: eyeRy }}
+            <motion.g
+              initial={{ scaleY: 1 }}
+              animate={{ scaleY: blink ? 0.14 : 1 }}
               transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-            />
-            <motion.ellipse
-              cx={BLOOPIE_CX + 10}
-              cy={BLOOPIE_CY - 2}
-              rx="6.4"
-              ry={eyeRy}
-              fill="#FFFFFF"
-              animate={{ ry: eyeRy }}
-              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-            />
-            <motion.circle cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" animate={{ cy: BLOOPIE_CY - 2 + pupilDy, opacity: blink ? 0 : 1 }} />
-            <motion.circle cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" animate={{ cy: BLOOPIE_CY - 2 + pupilDy, opacity: blink ? 0 : 1 }} />
-            <circle cx={BLOOPIE_CX - 11.6} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" opacity={blink ? 0 : 1} />
-            <circle cx={BLOOPIE_CX + 8.4} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" opacity={blink ? 0 : 1} />
-            <motion.path
+              style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
+            >
+              <ellipse cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2} rx="6.4" ry="6.4" fill="#FFFFFF" />
+              <ellipse cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2} rx="6.4" ry="6.4" fill="#FFFFFF" />
+              <circle cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" />
+              <circle cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" />
+              <circle cx={BLOOPIE_CX - 11.6} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" />
+              <circle cx={BLOOPIE_CX + 8.4} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" />
+            </motion.g>
+            <path
               d={smile}
               fill="none"
               stroke="#1E3A5F"
               strokeWidth="2.4"
               strokeLinecap="round"
-              animate={{ d: smile, opacity: isSpeaking ? 0 : 1 }}
-              transition={{ type: 'spring', stiffness: 180, damping: 18 }}
+              opacity={isSpeaking ? 0 : 1}
             />
-            <motion.ellipse
+            <ellipse
               cx={BLOOPIE_CX}
               cy={BLOOPIE_CY + 10}
               rx="7"
-              ry={mouthOpen}
+              ry={Math.max(mouthOpen, 0.5)}
               fill="#1E3A5F"
-              animate={{ ry: mouthOpen, opacity: isSpeaking ? 1 : 0 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+              opacity={isSpeaking ? 1 : 0}
             />
           </motion.g>
           <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.4 }}>
