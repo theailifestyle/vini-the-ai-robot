@@ -2,7 +2,7 @@
  * VinnyFace Component
  * 
  * The main visualizer for the AI.
- * Handles rendering the different "Persona" faces (Vini, WALLE, EVE, KITT, HAL, Verity).
+ * Handles rendering the different "Persona" faces (Vini, WALLE, EVE, KITT, HAL, Verity, Bloopie).
  * Uses Framer Motion for animations.
  * 
  * @module ViniFace
@@ -639,6 +639,284 @@ const VerityFace: React.FC<{
 };
 
 // ----------------------------------------------------------------------
+// BLOOPIE: flat blue crayon sun-creature with a sticker heart
+// ----------------------------------------------------------------------
+const BLOOPIE_BLUE = '#2F6FE0';
+const BLOOPIE_CX = 168;
+const BLOOPIE_CY = 206;
+const BLOOPIE_BODY_R = 78;
+const BLOOPIE_PAD_DIST = 156;
+const BLOOPIE_PAD_RX = 42;
+const BLOOPIE_PAD_RY = 26;
+
+function bloopiePolar(deg: number, r: number, ox = BLOOPIE_CX, oy = BLOOPIE_CY) {
+  const a = (deg * Math.PI) / 180;
+  return { x: ox + Math.cos(a) * r, y: oy + Math.sin(a) * r };
+}
+
+function bloopieArm(deg: number, inner: number, outer: number, gap = 4.6) {
+  const a = (deg * Math.PI) / 180;
+  const px = -Math.sin(a) * gap;
+  const py = Math.cos(a) * gap;
+  const start = bloopiePolar(deg, inner);
+  const end = bloopiePolar(deg, outer);
+  const line = (sign: number) =>
+    `M ${(start.x + px * sign).toFixed(1)} ${(start.y + py * sign).toFixed(1)} L ${(end.x + px * sign).toFixed(1)} ${(end.y + py * sign).toFixed(1)}`;
+  return { a: line(1), b: line(-1) };
+}
+
+const BLOOPIE_LIMBS: { deg: number; buttons: 1 | 3 }[] = [
+  { deg: 225, buttons: 3 }, // up-left
+  { deg: -45, buttons: 1 }, // up-right
+  { deg: 135, buttons: 3 }, // down-left
+  { deg: 45, buttons: 1 }, // down-right
+];
+
+const BLOOPIE_RAYS = Array.from({ length: 44 }, (_, i) => {
+  const deg = (i / 44) * 360;
+  const inner = 46 + (i % 3);
+  const outer = 68 + (i % 5) * 1.6;
+  const start = bloopiePolar(deg, inner);
+  const end = bloopiePolar(deg, outer);
+  return { x1: start.x, y1: start.y, x2: end.x, y2: end.y };
+});
+
+function bloopieButtons(deg: number, count: number) {
+  const center = bloopiePolar(deg, BLOOPIE_PAD_DIST);
+  const a = ((deg + 90) * Math.PI) / 180;
+  const offsets = count === 3 ? [-17, 0, 17] : [0];
+  return offsets.map((o) => ({
+    x: center.x + Math.cos(a) * o,
+    y: center.y + Math.sin(a) * o,
+  }));
+}
+
+const BLOOPIE_PET = bloopiePolar(-14, 188);
+const BLOOPIE_PET_ARM = bloopieArm(-14, BLOOPIE_BODY_R - 10, 166, 4.4);
+
+const BloopieButton: React.FC<{ x: number; y: number; color: string }> = ({ x, y, color }) => (
+  <g>
+    <circle cx={x} cy={y} r="7" fill="#FFFEF8" stroke={color} strokeWidth="2.2" />
+    <path
+      d={`M ${x - 3.5} ${y} H ${x + 3.5} M ${x} ${y - 3.5} V ${y + 3.5}`}
+      fill="none"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </g>
+);
+
+const BloopieFace: React.FC<{
+  state: ViniState;
+  emotion: Emotion;
+  speakingIntensity: number;
+  consumable?: FoodItem | null;
+  color?: string;
+}> = ({ state, emotion, speakingIntensity, consumable, color = BLOOPIE_BLUE }) => {
+  const [blink, setBlink] = useState(false);
+  const isSpeaking = state === ViniState.SPEAKING;
+  const isAsleep = state === ViniState.IDLE;
+  const isListening = state === ViniState.LISTENING;
+  const eyeRy = blink && !isAsleep ? 1.1 : 6.4;
+  const pupilDy = state === ViniState.THINKING ? -2.4 : state === ViniState.LOOKING ? 0.4 : 0;
+  const smile = emotion === Emotion.HAPPY || state === ViniState.EATING
+    ? `M ${BLOOPIE_CX - 12} ${BLOOPIE_CY + 8} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 20} ${BLOOPIE_CX + 12} ${BLOOPIE_CY + 8}`
+    : emotion === Emotion.CONFUSED
+      ? `M ${BLOOPIE_CX - 10} ${BLOOPIE_CY + 12} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 8} ${BLOOPIE_CX + 10} ${BLOOPIE_CY + 13}`
+      : `M ${BLOOPIE_CX - 13} ${BLOOPIE_CY + 10} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 19} ${BLOOPIE_CX + 13} ${BLOOPIE_CY + 10}`;
+  const mouthOpen = 5 + speakingIntensity * 7;
+  const px = BLOOPIE_PET.x;
+  const py = BLOOPIE_PET.y;
+
+  useEffect(() => {
+    if (isAsleep || state === ViniState.EATING || state === ViniState.LOOKING) return;
+    const blinkInterval = setInterval(() => {
+      if (Math.random() > 0.62) {
+        setBlink(true);
+        setTimeout(() => setBlink(false), 140);
+      }
+    }, 2600);
+    return () => clearInterval(blinkInterval);
+  }, [state, isAsleep]);
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center">
+      <motion.div
+        animate={{
+          scale: isSpeaking ? 1 + speakingIntensity * 0.04 : isAsleep ? [1, 1.03, 1] : 1,
+          y: isSpeaking ? [0, -8, 0] : isAsleep ? [0, 12, 0] : 0,
+          rotate: isListening ? [-1.6, 1.6, -1.6] : 0,
+        }}
+        transition={
+          isSpeaking
+            ? { duration: 0.28, repeat: Infinity, repeatType: 'mirror' }
+            : isAsleep
+              ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+              : isListening
+                ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' }
+                : { type: 'spring', stiffness: 120, damping: 16 }
+        }
+        className="w-80 h-80 md:w-[30rem] md:h-[30rem]"
+      >
+        <svg viewBox="0 0 420 420" className="w-full h-full" role="img" aria-label={isAsleep ? 'Bloopie sleeping' : 'Bloopie'}>
+          <rect x="8" y="8" width="404" height="404" rx="26" fill="#FFFEF8" />
+
+          {BLOOPIE_LIMBS.map((limb) => {
+            const arm = bloopieArm(limb.deg, BLOOPIE_BODY_R - 8, BLOOPIE_PAD_DIST - BLOOPIE_PAD_RY + 1);
+            return (
+              <g key={`arm-${limb.deg}`}>
+                <path d={arm.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+                <path d={arm.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+              </g>
+            );
+          })}
+          <path d={BLOOPIE_PET_ARM.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+          <path d={BLOOPIE_PET_ARM.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="#FFFEF8" />
+          {BLOOPIE_RAYS.map((ray, i) => (
+            <line
+              key={i}
+              x1={ray.x1}
+              y1={ray.y1}
+              x2={ray.x2}
+              y2={ray.y2}
+              stroke={color}
+              strokeWidth="2.6"
+              strokeLinecap="round"
+            />
+          ))}
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="none" stroke={color} strokeWidth="5" />
+
+          <defs>
+            <linearGradient id="bloopie-rainbow" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#2EC4B6" />
+              <stop offset="0.22" stopColor="#3B82F6" />
+              <stop offset="0.42" stopColor="#A855F7" />
+              <stop offset="0.62" stopColor="#F43F5E" />
+              <stop offset="0.8" stopColor="#FBBF24" />
+              <stop offset="1" stopColor="#34D399" />
+            </linearGradient>
+          </defs>
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="40" fill="none" stroke="url(#bloopie-rainbow)" strokeWidth="9" />
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="34" fill="#14B8A6" />
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="29" fill="#FFFFFF" />
+          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="25" fill="#EF4444" />
+          <ellipse cx={BLOOPIE_CX - 8} cy={BLOOPIE_CY - 14} rx="8" ry="4" fill="#FFFFFF" opacity="0.9" transform={`rotate(-28 ${BLOOPIE_CX - 8} ${BLOOPIE_CY - 14})`} />
+
+          <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }} transition={{ duration: 0.4 }}>
+            <motion.ellipse
+              cx={BLOOPIE_CX - 10}
+              cy={BLOOPIE_CY - 2}
+              rx="6.4"
+              ry={eyeRy}
+              fill="#FFFFFF"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+            <motion.ellipse
+              cx={BLOOPIE_CX + 10}
+              cy={BLOOPIE_CY - 2}
+              rx="6.4"
+              ry={eyeRy}
+              fill="#FFFFFF"
+              animate={{ ry: eyeRy }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            />
+            <motion.circle cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" animate={{ cy: BLOOPIE_CY - 2 + pupilDy, opacity: blink ? 0 : 1 }} />
+            <motion.circle cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" animate={{ cy: BLOOPIE_CY - 2 + pupilDy, opacity: blink ? 0 : 1 }} />
+            <circle cx={BLOOPIE_CX - 11.6} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" opacity={blink ? 0 : 1} />
+            <circle cx={BLOOPIE_CX + 8.4} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" opacity={blink ? 0 : 1} />
+            <motion.path
+              d={smile}
+              fill="none"
+              stroke="#1E3A5F"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              animate={{ d: smile, opacity: isSpeaking ? 0 : 1 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 18 }}
+            />
+            <motion.ellipse
+              cx={BLOOPIE_CX}
+              cy={BLOOPIE_CY + 10}
+              rx="7"
+              ry={mouthOpen}
+              fill="#1E3A5F"
+              animate={{ ry: mouthOpen, opacity: isSpeaking ? 1 : 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            />
+          </motion.g>
+          <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.4 }}>
+            <path d={`M ${BLOOPIE_CX - 16} ${BLOOPIE_CY - 3} Q ${BLOOPIE_CX - 10} ${BLOOPIE_CY + 4} ${BLOOPIE_CX - 4} ${BLOOPIE_CY - 3}`} fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+            <path d={`M ${BLOOPIE_CX + 4} ${BLOOPIE_CY - 3} Q ${BLOOPIE_CX + 10} ${BLOOPIE_CY + 4} ${BLOOPIE_CX + 16} ${BLOOPIE_CY - 3}`} fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+            <path d={`M ${BLOOPIE_CX - 7} ${BLOOPIE_CY + 12} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 16} ${BLOOPIE_CX + 7} ${BLOOPIE_CY + 12}`} fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" />
+          </motion.g>
+
+          {BLOOPIE_LIMBS.map((limb) => {
+            const center = bloopiePolar(limb.deg, BLOOPIE_PAD_DIST);
+            return (
+              <g key={`pad-${limb.deg}`}>
+                <ellipse
+                  cx={center.x}
+                  cy={center.y}
+                  rx={BLOOPIE_PAD_RX}
+                  ry={BLOOPIE_PAD_RY}
+                  fill="#FFFEF8"
+                  stroke={color}
+                  strokeWidth="3.4"
+                  transform={`rotate(${limb.deg + 90} ${center.x} ${center.y})`}
+                />
+                {bloopieButtons(limb.deg, limb.buttons).map((button, i) => (
+                  <BloopieButton key={i} x={button.x} y={button.y} color={color} />
+                ))}
+              </g>
+            );
+          })}
+
+          <polygon points={`${px - 16},${py - 8} ${px - 24},${py - 32} ${px - 4},${py - 16}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
+          <polygon points={`${px + 8},${py - 12} ${px + 22},${py - 34} ${px + 18},${py - 8}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
+          <circle cx={px} cy={py} r="22" fill="#FFFEF8" stroke={color} strokeWidth="3.2" />
+          <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }}>
+            <circle cx={px - 1} cy={py - 1} r="7" fill="#FFFFFF" stroke={color} strokeWidth="2" />
+            <circle cx={px - 1} cy={py - 1} r="3.3" fill={color} />
+            <circle cx={px - 2.4} cy={py - 2.4} r="1.15" fill="#FFFFFF" />
+            <path d={`M ${px - 8} ${py + 8} Q ${px} ${py + 14} ${px + 8} ${py + 8}`} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+          </motion.g>
+          <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }}>
+            <path d={`M ${px - 8} ${py - 1} Q ${px - 1} ${py + 4} ${px + 6} ${py - 1}`} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+            <path d={`M ${px - 6} ${py + 9} Q ${px} ${py + 12} ${px + 6} ${py + 9}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+          </motion.g>
+
+          {isAsleep && [0, 1, 2].map((i) => (
+            <motion.text
+              key={i}
+              x={228 + i * 22}
+              y={78 - i * 16}
+              fill={color}
+              fontSize={22 + i * 6}
+              fontWeight="700"
+              fontFamily="ui-rounded, 'Trebuchet MS', sans-serif"
+              initial={{ opacity: 1, y: 0 }}
+              animate={{ opacity: [1, 1, 0], y: [0, -6, -20] }}
+              transition={{ duration: 3.8, repeat: Infinity, delay: i * 0.75, ease: 'easeInOut', times: [0, 0.72, 1] }}
+            >
+              z
+            </motion.text>
+          ))}
+        </svg>
+      </motion.div>
+
+      {state === ViniState.EATING && consumable && (
+        <div className="absolute bottom-10 animate-float-up text-9xl z-50 drop-shadow-2xl">
+          {consumable.emoji}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------
 // MAIN CONTAINER
 // ----------------------------------------------------------------------
 const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity = 0, consumable, color, persona }) => {
@@ -650,7 +928,7 @@ const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity =
 
   // Random blink logic
   useEffect(() => {
-    if (isSleeping || persona === 'KITT' || persona === 'HAL' || persona === 'Verity') return;
+    if (isSleeping || persona === 'KITT' || persona === 'HAL' || persona === 'Verity' || persona === 'Bloopie') return;
 
     const blinkInterval = setInterval(() => {
       // Random blink every few seconds
@@ -679,6 +957,17 @@ const ViniFace: React.FC<ViniFaceProps> = ({ state, emotion, speakingIntensity =
   if (persona === 'Verity') {
     return (
       <VerityFace
+        state={state}
+        emotion={emotion}
+        speakingIntensity={speakingIntensity}
+        consumable={consumable}
+        color={color}
+      />
+    );
+  }
+  if (persona === 'Bloopie') {
+    return (
+      <BloopieFace
         state={state}
         emotion={emotion}
         speakingIntensity={speakingIntensity}
