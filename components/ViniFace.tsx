@@ -639,7 +639,10 @@ const VerityFace: React.FC<{
 };
 
 // ----------------------------------------------------------------------
-// BLOOPIE: flat blue crayon sun-creature with a sticker heart
+// BLOOPIE: flat blue crayon creature with a plain watermelon belly.
+// The head is authored on the right. The whole drawing turns 90°
+// counter-clockwise so that face sits on top; the head group turns
+// back so the eye and ears stay upright.
 // ----------------------------------------------------------------------
 const BLOOPIE_BLUE = '#2F6FE0';
 const BLOOPIE_CX = 168;
@@ -648,6 +651,13 @@ const BLOOPIE_BODY_R = 78;
 const BLOOPIE_PAD_DIST = 156;
 const BLOOPIE_PAD_RX = 42;
 const BLOOPIE_PAD_RY = 26;
+const BLOOPIE_VIEW = 420;
+const BLOOPIE_TURN = BLOOPIE_VIEW / 2;
+
+function bloopieTurned(x: number, y: number) {
+  // rotate(-90) around the view center: a point on the right lands on top.
+  return { x: y, y: BLOOPIE_VIEW - x };
+}
 
 function bloopiePolar(deg: number, r: number, ox = BLOOPIE_CX, oy = BLOOPIE_CY) {
   const a = (deg * Math.PI) / 180;
@@ -691,8 +701,8 @@ function bloopieButtons(deg: number, count: number) {
   }));
 }
 
-const BLOOPIE_PET = bloopiePolar(-14, 188);
-const BLOOPIE_PET_ARM = bloopieArm(-14, BLOOPIE_BODY_R - 10, 166, 4.4);
+const BLOOPIE_HEAD = bloopiePolar(-14, 188);
+const BLOOPIE_HEAD_ARM = bloopieArm(-14, BLOOPIE_BODY_R - 10, 166, 4.4);
 
 const BloopieButton: React.FC<{ x: number; y: number; color: string }> = ({ x, y, color }) => (
   <g>
@@ -718,18 +728,16 @@ const BloopieFace: React.FC<{
   const isSpeaking = state === ViniState.SPEAKING;
   const isAsleep = state === ViniState.IDLE;
   const isListening = state === ViniState.LISTENING;
-  const pupilDy = state === ViniState.THINKING ? -2.4 : state === ViniState.LOOKING ? 0.4 : 0;
-  const smile = emotion === Emotion.HAPPY || state === ViniState.EATING
-    ? `M ${BLOOPIE_CX - 12} ${BLOOPIE_CY + 8} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 20} ${BLOOPIE_CX + 12} ${BLOOPIE_CY + 8}`
-    : emotion === Emotion.CONFUSED
-      ? `M ${BLOOPIE_CX - 10} ${BLOOPIE_CY + 12} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 8} ${BLOOPIE_CX + 10} ${BLOOPIE_CY + 13}`
-      : `M ${BLOOPIE_CX - 13} ${BLOOPIE_CY + 10} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 19} ${BLOOPIE_CX + 13} ${BLOOPIE_CY + 10}`;
-  const mouthOpen = 5 + speakingIntensity * 7;
-  const px = BLOOPIE_PET.x;
-  const py = BLOOPIE_PET.y;
+  const pupilDy = state === ViniState.THINKING ? -2.2 : state === ViniState.LOOKING ? 1.4 : 0;
+  const px = BLOOPIE_HEAD.x;
+  const py = BLOOPIE_HEAD.y;
+  const head = bloopieTurned(px, py);
+  const headSmile = emotion === Emotion.CONFUSED
+    ? `M ${px - 7} ${py + 10} Q ${px} ${py + 7} ${px + 7} ${py + 11}`
+    : `M ${px - 8} ${py + 8} Q ${px} ${py + 14} ${px + 8} ${py + 8}`;
 
   useEffect(() => {
-    if (isAsleep || state === ViniState.EATING || state === ViniState.LOOKING) return;
+    if (isAsleep || isSpeaking || state === ViniState.EATING || state === ViniState.LOOKING) return;
     const blinkInterval = setInterval(() => {
       if (Math.random() > 0.62) {
         setBlink(true);
@@ -737,7 +745,7 @@ const BloopieFace: React.FC<{
       }
     }, 2600);
     return () => clearInterval(blinkInterval);
-  }, [state, isAsleep]);
+  }, [state, isAsleep, isSpeaking]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
@@ -758,129 +766,124 @@ const BloopieFace: React.FC<{
         }
         className="w-80 h-80 md:w-[30rem] md:h-[30rem]"
       >
-        <svg viewBox="0 0 420 420" className="w-full h-full" role="img" aria-label={isAsleep ? 'Bloopie sleeping' : 'Bloopie'}>
-          <rect x="8" y="8" width="404" height="404" rx="26" fill="#FFFEF8" />
+        <svg viewBox="0 0 420 420" className="w-full h-full overflow-visible" role="img" aria-label={isAsleep ? 'Bloopie sleeping' : 'Bloopie'}>
+          <g transform={`rotate(-90 ${BLOOPIE_TURN} ${BLOOPIE_TURN})`}>
+            {BLOOPIE_LIMBS.map((limb) => {
+              const arm = bloopieArm(limb.deg, BLOOPIE_BODY_R - 8, BLOOPIE_PAD_DIST - BLOOPIE_PAD_RY + 1);
+              return (
+                <g key={`arm-${limb.deg}`}>
+                  <path d={arm.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+                  <path d={arm.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+                </g>
+              );
+            })}
+            <path d={BLOOPIE_HEAD_ARM.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+            <path d={BLOOPIE_HEAD_ARM.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
 
-          {BLOOPIE_LIMBS.map((limb) => {
-            const arm = bloopieArm(limb.deg, BLOOPIE_BODY_R - 8, BLOOPIE_PAD_DIST - BLOOPIE_PAD_RY + 1);
-            return (
-              <g key={`arm-${limb.deg}`}>
-                <path d={arm.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
-                <path d={arm.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
-              </g>
-            );
-          })}
-          <path d={BLOOPIE_PET_ARM.a} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
-          <path d={BLOOPIE_PET_ARM.b} fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="#FFFEF8" />
+            {BLOOPIE_RAYS.map((ray, i) => (
+              <line
+                key={i}
+                x1={ray.x1}
+                y1={ray.y1}
+                x2={ray.x2}
+                y2={ray.y2}
+                stroke={color}
+                strokeWidth="2.6"
+                strokeLinecap="round"
+              />
+            ))}
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="none" stroke={color} strokeWidth="5" />
 
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="#FFFEF8" />
-          {BLOOPIE_RAYS.map((ray, i) => (
-            <line
-              key={i}
-              x1={ray.x1}
-              y1={ray.y1}
-              x2={ray.x2}
-              y2={ray.y2}
-              stroke={color}
-              strokeWidth="2.6"
-              strokeLinecap="round"
-            />
-          ))}
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r={BLOOPIE_BODY_R} fill="none" stroke={color} strokeWidth="5" />
+            <defs>
+              <linearGradient id="bloopie-rainbow" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#2EC4B6" />
+                <stop offset="0.22" stopColor="#3B82F6" />
+                <stop offset="0.42" stopColor="#A855F7" />
+                <stop offset="0.62" stopColor="#F43F5E" />
+                <stop offset="0.8" stopColor="#FBBF24" />
+                <stop offset="1" stopColor="#34D399" />
+              </linearGradient>
+            </defs>
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="40" fill="none" stroke="url(#bloopie-rainbow)" strokeWidth="9" />
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="34" fill="#14B8A6" />
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="29" fill="#FFFFFF" />
+            <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="25" fill="#EF4444" />
+            <ellipse cx={BLOOPIE_CX - 6} cy={BLOOPIE_CY - 8} rx="7" ry="3.2" fill="#FFFFFF" opacity="0.55" transform={`rotate(-28 ${BLOOPIE_CX - 6} ${BLOOPIE_CY - 8})`} />
+            <circle cx={BLOOPIE_CX - 8} cy={BLOOPIE_CY + 6} r="2.1" fill="#7F1D1D" />
+            <circle cx={BLOOPIE_CX + 7} cy={BLOOPIE_CY + 2} r="1.7" fill="#7F1D1D" />
+            <circle cx={BLOOPIE_CX + 1} cy={BLOOPIE_CY + 11} r="1.5" fill="#7F1D1D" />
 
-          <defs>
-            <linearGradient id="bloopie-rainbow" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#2EC4B6" />
-              <stop offset="0.22" stopColor="#3B82F6" />
-              <stop offset="0.42" stopColor="#A855F7" />
-              <stop offset="0.62" stopColor="#F43F5E" />
-              <stop offset="0.8" stopColor="#FBBF24" />
-              <stop offset="1" stopColor="#34D399" />
-            </linearGradient>
-          </defs>
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="40" fill="none" stroke="url(#bloopie-rainbow)" strokeWidth="9" />
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="34" fill="#14B8A6" />
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="29" fill="#FFFFFF" />
-          <circle cx={BLOOPIE_CX} cy={BLOOPIE_CY} r="25" fill="#EF4444" />
-          <ellipse cx={BLOOPIE_CX - 8} cy={BLOOPIE_CY - 14} rx="8" ry="4" fill="#FFFFFF" opacity="0.9" transform={`rotate(-28 ${BLOOPIE_CX - 8} ${BLOOPIE_CY - 14})`} />
+            {BLOOPIE_LIMBS.map((limb) => {
+              const center = bloopiePolar(limb.deg, BLOOPIE_PAD_DIST);
+              return (
+                <g key={`pad-${limb.deg}`}>
+                  <ellipse
+                    cx={center.x}
+                    cy={center.y}
+                    rx={BLOOPIE_PAD_RX}
+                    ry={BLOOPIE_PAD_RY}
+                    fill="#FFFEF8"
+                    stroke={color}
+                    strokeWidth="3.4"
+                    transform={`rotate(${limb.deg + 90} ${center.x} ${center.y})`}
+                  />
+                  {bloopieButtons(limb.deg, limb.buttons).map((button, i) => (
+                    <BloopieButton key={i} x={button.x} y={button.y} color={color} />
+                  ))}
+                </g>
+              );
+            })}
 
-          <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }} transition={{ duration: 0.4 }}>
-            <motion.g
-              initial={{ scaleY: 1 }}
-              animate={{ scaleY: blink ? 0.14 : 1 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
-            >
-              <ellipse cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2} rx="6.4" ry="6.4" fill="#FFFFFF" />
-              <ellipse cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2} rx="6.4" ry="6.4" fill="#FFFFFF" />
-              <circle cx={BLOOPIE_CX - 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" />
-              <circle cx={BLOOPIE_CX + 10} cy={BLOOPIE_CY - 2 + pupilDy} r="3" fill="#1E3A5F" />
-              <circle cx={BLOOPIE_CX - 11.6} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" />
-              <circle cx={BLOOPIE_CX + 8.4} cy={BLOOPIE_CY - 3.8} r="1.15" fill="#FFFFFF" />
-            </motion.g>
-            <path
-              d={smile}
-              fill="none"
-              stroke="#1E3A5F"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              opacity={isSpeaking ? 0 : 1}
-            />
-            <ellipse
-              cx={BLOOPIE_CX}
-              cy={BLOOPIE_CY + 10}
-              rx="7"
-              ry={Math.max(mouthOpen, 0.5)}
-              fill="#1E3A5F"
-              opacity={isSpeaking ? 1 : 0}
-            />
-          </motion.g>
-          <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }} transition={{ duration: 0.4 }}>
-            <path d={`M ${BLOOPIE_CX - 16} ${BLOOPIE_CY - 3} Q ${BLOOPIE_CX - 10} ${BLOOPIE_CY + 4} ${BLOOPIE_CX - 4} ${BLOOPIE_CY - 3}`} fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
-            <path d={`M ${BLOOPIE_CX + 4} ${BLOOPIE_CY - 3} Q ${BLOOPIE_CX + 10} ${BLOOPIE_CY + 4} ${BLOOPIE_CX + 16} ${BLOOPIE_CY - 3}`} fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
-            <path d={`M ${BLOOPIE_CX - 7} ${BLOOPIE_CY + 12} Q ${BLOOPIE_CX} ${BLOOPIE_CY + 16} ${BLOOPIE_CX + 7} ${BLOOPIE_CY + 12}`} fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" />
-          </motion.g>
-
-          {BLOOPIE_LIMBS.map((limb) => {
-            const center = bloopiePolar(limb.deg, BLOOPIE_PAD_DIST);
-            return (
-              <g key={`pad-${limb.deg}`}>
-                <ellipse
-                  cx={center.x}
-                  cy={center.y}
-                  rx={BLOOPIE_PAD_RX}
-                  ry={BLOOPIE_PAD_RY}
-                  fill="#FFFEF8"
-                  stroke={color}
-                  strokeWidth="3.4"
-                  transform={`rotate(${limb.deg + 90} ${center.x} ${center.y})`}
-                />
-                {bloopieButtons(limb.deg, limb.buttons).map((button, i) => (
-                  <BloopieButton key={i} x={button.x} y={button.y} color={color} />
-                ))}
-              </g>
-            );
-          })}
-
-          <polygon points={`${px - 16},${py - 8} ${px - 24},${py - 32} ${px - 4},${py - 16}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
-          <polygon points={`${px + 8},${py - 12} ${px + 22},${py - 34} ${px + 18},${py - 8}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
-          <circle cx={px} cy={py} r="22" fill="#FFFEF8" stroke={color} strokeWidth="3.2" />
-          <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }}>
-            <circle cx={px - 1} cy={py - 1} r="7" fill="#FFFFFF" stroke={color} strokeWidth="2" />
-            <circle cx={px - 1} cy={py - 1} r="3.3" fill={color} />
-            <circle cx={px - 2.4} cy={py - 2.4} r="1.15" fill="#FFFFFF" />
-            <path d={`M ${px - 8} ${py + 8} Q ${px} ${py + 14} ${px + 8} ${py + 8}`} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
-          </motion.g>
-          <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }}>
-            <path d={`M ${px - 8} ${py - 1} Q ${px - 1} ${py + 4} ${px + 6} ${py - 1}`} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
-            <path d={`M ${px - 6} ${py + 9} Q ${px} ${py + 12} ${px + 6} ${py + 9}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
-          </motion.g>
+            <g transform={`rotate(90 ${px} ${py})`}>
+              <polygon points={`${px - 16},${py - 8} ${px - 24},${py - 32} ${px - 4},${py - 16}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
+              <polygon points={`${px + 8},${py - 12} ${px + 22},${py - 34} ${px + 18},${py - 8}`} fill="#FFFEF8" stroke={color} strokeWidth="2.6" strokeLinejoin="round" />
+              <circle cx={px} cy={py} r="22" fill="#FFFEF8" stroke={color} strokeWidth="3.2" />
+              <motion.g initial={{ opacity: isAsleep ? 0 : 1 }} animate={{ opacity: isAsleep ? 0 : 1 }}>
+                <motion.g
+                  animate={
+                    isSpeaking
+                      ? { scaleX: [1.22, 1.05, 1.28, 1.08], scaleY: [0.38, 0.7, 0.46, 0.66] }
+                      : { scaleX: 1, scaleY: blink ? 0.14 : 1 }
+                  }
+                  transition={
+                    isSpeaking
+                      ? { duration: 0.42, repeat: Infinity, ease: 'easeInOut' }
+                      : { type: 'spring', stiffness: 280, damping: 22 }
+                  }
+                  style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
+                >
+                  <circle cx={px - 1} cy={py - 1} r="7" fill="#FFFFFF" stroke={color} strokeWidth="2" />
+                  <motion.g
+                    animate={
+                      isSpeaking
+                        ? { x: [-3.4, 3.4, -2.6, 3.2], y: [-1.4, 1.6, -1.8, 1.2] }
+                        : { x: 0, y: pupilDy }
+                    }
+                    transition={
+                      isSpeaking
+                        ? { duration: 0.5, repeat: Infinity, ease: 'easeInOut' }
+                        : { type: 'spring', stiffness: 260, damping: 18 }
+                    }
+                  >
+                    <circle cx={px - 1} cy={py - 1} r="3.3" fill={color} />
+                    <circle cx={px - 2.4} cy={py - 2.4} r="1.15" fill="#FFFFFF" />
+                  </motion.g>
+                </motion.g>
+                <path d={headSmile} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+              </motion.g>
+              <motion.g initial={{ opacity: isAsleep ? 1 : 0 }} animate={{ opacity: isAsleep ? 1 : 0 }}>
+                <path d={`M ${px - 8} ${py - 1} Q ${px - 1} ${py + 4} ${px + 6} ${py - 1}`} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+                <path d={`M ${px - 6} ${py + 9} Q ${px} ${py + 12} ${px + 6} ${py + 9}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+              </motion.g>
+            </g>
+          </g>
 
           {isAsleep && [0, 1, 2].map((i) => (
             <motion.text
               key={i}
-              x={228 + i * 22}
-              y={78 - i * 16}
+              x={head.x + 34 + i * 18}
+              y={head.y + 6 - i * 16}
               fill={color}
               fontSize={22 + i * 6}
               fontWeight="700"
